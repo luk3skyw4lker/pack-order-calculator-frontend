@@ -24,6 +24,8 @@ export default function Home() {
 	const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 	const [orders, setOrders] = useState<any[]>([]);
 	const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+	const [packSizes, setPackSizes] = useState<any[]>([]);
+	const [isLoadingPackSizes, setIsLoadingPackSizes] = useState(false);
 	const { toast } = useToast();
 
 	const BASE_BACKEND_URL = process.env.NEXT_PUBLIC_BASE_BACKEND_URL || '';
@@ -51,8 +53,32 @@ export default function Home() {
 		}
 	};
 
+	const fetchPackSizes = async () => {
+		setIsLoadingPackSizes(true);
+		try {
+			const response = await fetch(`${BASE_BACKEND_URL}/pack-sizes`);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch pack sizes: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			setPackSizes(data);
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description:
+					error instanceof Error ? error.message : 'Failed to fetch pack sizes',
+				variant: 'destructive'
+			});
+		} finally {
+			setIsLoadingPackSizes(false);
+		}
+	};
+
 	useEffect(() => {
 		fetchOrders();
+		fetchPackSizes();
 	}, []);
 
 	const handleCreatePackSize = async (e: React.FormEvent) => {
@@ -91,6 +117,7 @@ export default function Home() {
 			});
 
 			setPackSize('');
+			fetchPackSizes();
 		} catch (error) {
 			toast({
 				title: 'Error',
@@ -278,6 +305,68 @@ export default function Home() {
 						</CardContent>
 					</Card>
 				</div>
+
+				{/* Available Pack Sizes Section */}
+				<Card className="mt-8 border-border">
+					<CardHeader className="space-y-1 pb-4">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<div className="rounded-lg bg-primary/10 p-2">
+									<Package className="h-5 w-5 text-primary" />
+								</div>
+								<CardTitle className="text-2xl">Available Pack Sizes</CardTitle>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={fetchPackSizes}
+								disabled={isLoadingPackSizes}
+							>
+								{isLoadingPackSizes ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Refreshing...
+									</>
+								) : (
+									'Refresh'
+								)}
+							</Button>
+						</div>
+						<CardDescription>
+							View all available pack sizes in your inventory system
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{isLoadingPackSizes && packSizes?.length === 0 ? (
+							<div className="flex items-center justify-center py-8">
+								<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+							</div>
+						) : packSizes === null || packSizes.length === 0 ? (
+							<div className="text-center py-8 text-muted-foreground">
+								<p>No pack sizes found</p>
+								<p className="text-sm mt-1">
+									Create your first pack size to get started
+								</p>
+							</div>
+						) : (
+							<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+								{packSizes.map((pack, index) => (
+									<div
+										key={pack.id || index}
+										className="rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center"
+									>
+										<div className="text-2xl font-bold text-primary">
+											{pack.size}
+										</div>
+										<div className="text-xs text-muted-foreground mt-1">
+											items
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</CardContent>
+				</Card>
 
 				{/* Orders List Section */}
 				<Card className="mt-8 border-border">
