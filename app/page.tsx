@@ -58,10 +58,11 @@ export default function Home() {
 	const handleCreatePackSize = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!packSize.trim()) {
+		const parsedPackSize = Number.parseInt(packSize);
+		if (isNaN(parsedPackSize) || parsedPackSize <= 0) {
 			toast({
 				title: 'Error',
-				description: 'Please enter a pack size',
+				description: 'Please enter a valid positive number',
 				variant: 'destructive'
 			});
 			return;
@@ -75,7 +76,7 @@ export default function Home() {
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ size: packSize })
+				body: JSON.stringify({ size: parsedPackSize })
 			});
 
 			if (!response.ok) {
