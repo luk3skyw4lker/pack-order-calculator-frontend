@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
-import { Package, ShoppingCart, Loader2 } from 'lucide-react';
+import { Package, ShoppingCart, Loader2, Pencil, Check, X } from 'lucide-react';
 
 export default function Home() {
 	const [packSize, setPackSize] = useState('');
@@ -26,6 +26,9 @@ export default function Home() {
 	const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 	const [packSizes, setPackSizes] = useState<any[]>([]);
 	const [isLoadingPackSizes, setIsLoadingPackSizes] = useState(false);
+	const [editingPackId, setEditingPackId] = useState<number | null>(null);
+	const [editingPackSize, setEditingPackSize] = useState('');
+	const [isUpdatingPack, setIsUpdatingPack] = useState(false);
 	const { toast } = useToast();
 
 	const BASE_BACKEND_URL = process.env.NEXT_PUBLIC_BASE_BACKEND_URL || '';
@@ -185,6 +188,62 @@ export default function Home() {
 			});
 		} finally {
 			setIsCreatingOrder(false);
+		}
+	};
+
+	const handleEditPack = (pack: any) => {
+		setEditingPackId(pack.id);
+		setEditingPackSize(pack.size.toString());
+	};
+
+	const handleCancelEdit = () => {
+		setEditingPackId(null);
+		setEditingPackSize('');
+	};
+
+	const handleUpdatePackSize = async (packId: number) => {
+		const parsedPackSize = Number.parseInt(editingPackSize);
+		if (isNaN(parsedPackSize) || parsedPackSize <= 0) {
+			toast({
+				title: 'Error',
+				description: 'Please enter a valid positive number',
+				variant: 'destructive'
+			});
+			return;
+		}
+
+		setIsUpdatingPack(true);
+
+		try {
+			const response = await fetch(`${BASE_BACKEND_URL}/pack-sizes/${packId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ size: parsedPackSize })
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to update pack size: ${response.statusText}`);
+			}
+
+			toast({
+				title: 'Success',
+				description: 'Pack size updated successfully'
+			});
+
+			setEditingPackId(null);
+			setEditingPackSize('');
+			fetchPackSizes();
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description:
+					error instanceof Error ? error.message : 'Failed to update pack size',
+				variant: 'destructive'
+			});
+		} finally {
+			setIsUpdatingPack(false);
 		}
 	};
 
@@ -353,14 +412,61 @@ export default function Home() {
 								{packSizes.map((pack, index) => (
 									<div
 										key={pack.id || index}
-										className="rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center"
+										className="rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors"
 									>
-										<div className="text-2xl font-bold text-primary">
-											{pack.size}
-										</div>
-										<div className="text-xs text-muted-foreground mt-1">
-											items
-										</div>
+										{editingPackId === pack.id ? (
+											<div className="space-y-2">
+												<Input
+													type="number"
+													value={editingPackSize}
+													onChange={e => setEditingPackSize(e.target.value)}
+													className="h-8 text-center"
+													min="1"
+													disabled={isUpdatingPack}
+												/>
+												<div className="flex gap-1">
+													<Button
+														size="sm"
+														variant="default"
+														className="flex-1 h-7"
+														onClick={() => handleUpdatePackSize(pack.id)}
+														disabled={isUpdatingPack}
+													>
+														{isUpdatingPack ? (
+															<Loader2 className="h-3 w-3 animate-spin" />
+														) : (
+															<Check className="h-3 w-3" />
+														)}
+													</Button>
+													<Button
+														size="sm"
+														variant="outline"
+														className="flex-1 h-7"
+														onClick={handleCancelEdit}
+														disabled={isUpdatingPack}
+													>
+														<X className="h-3 w-3" />
+													</Button>
+												</div>
+											</div>
+										) : (
+											<div className="text-center relative group">
+												<div className="text-2xl font-bold text-primary">
+													{pack.size}
+												</div>
+												<div className="text-xs text-muted-foreground mt-1">
+													items
+												</div>
+												<Button
+													size="sm"
+													variant="ghost"
+													className="absolute top-0 right-0 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+													onClick={() => handleEditPack(pack)}
+												>
+													<Pencil className="h-3 w-3" />
+												</Button>
+											</div>
+										)}
 									</div>
 								))}
 							</div>
